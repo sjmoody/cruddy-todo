@@ -13,11 +13,13 @@ exports.create = (text, callback) => {
       callback(err, null);
     } else {
       var id = data;
+      // console.log("data in counter callback:", data);
       var filename = this.dataDir + '/' + id + '.txt';
-      fs.writeFile(filename, text, 'utf8', (err, data) => {
+      fs.writeFile(filename, text, 'utf8', (err) => {
         if (err) {
           callback(err, null);
         } else {
+          // console.log("data in writeFile cb", data);
           callback(null, {id, text});
         }
       });
@@ -31,15 +33,15 @@ exports.create = (text, callback) => {
 
 // get array from readDir of filenames
 // for each item in fileNameArry
-  // convert filename into a id
-  // readOne(id, ()=> {readFile and push data into array})
+// convert filename into a id
+// readOne(id, ()=> {readFile and push data into array})
 
 // get array from readDir of filenames
 // ['00001.txt', '00002.txt']
 // for i in array
-  // remove .txt from each
+// remove .txt from each
 // for each item in fileNameArry
-  // read each file, push content of file to array
+// read each file, push content of file to array
 
 exports.readAll = (callback) => {
   var todoArray = [];
@@ -48,63 +50,66 @@ exports.readAll = (callback) => {
       callback(err, null);
       console.log(err);
     } else {
-      // iterate through array of filenames and readfile, push data into todoarray
-      // data is array of filenames
-      for (var i = 0; i < data.length; i++) {
-        fs.readFile(data[i], (err, data) => {
-          if (err) {
-            callback(err, null);
-          } else {
-            //want to make an object
-            todoArray.push(data);
-          }
-        });
-      }
-      callback(null, todoArray);
-      // callback(null, data);
-      // console.log(data);
 
-      // TODO: Refactor with Promises.all on all of the file names
+      // [ '00001.txt', '00002.txt' ]
+      // data
+      // WANT: dataObj = {id: '00001.txt', text: '00001.txt'} {id: id, text: id}
+      // array of filenames
+      var dataObj = _.map(data, (file)=>{
+        id = file.slice(0, 5);
+        return {id: id, text: id};
+      });
+      callback(null, dataObj);
     }
   });
 };
 
-exports.readAllLive = (callback) => {
-  var data = _.map(items, (text, id) => {
-    return { id, text };
-  });
-  callback(null, data);
-};
+// input: id
+// output cb with the data for one task file
+// edge case: does the file exist? need to check at the same moment as reading file
 
 exports.readOne = (id, callback) => {
-  var text = items[id];
-  if (!text) {
-    callback(new Error(`No item with id: ${id}`));
-  } else {
-    callback(null, { id, text });
-  }
+  var filename = this.dataDir + '/' + id + '.txt';
+  fs.readFile(filename, 'utf8', (err, data) => {
+    if (err) {
+      callback(new Error(`No item with id: ${id}`));
+    } else {
+      callback(null, { id: id, text: data });
+    }
+  });
 };
 
+//fs.writeFile( file, data, options, callback )
 exports.update = (id, text, callback) => {
-  var item = items[id];
-  if (!item) {
-    callback(new Error(`No item with id: ${id}`));
-  } else {
-    items[id] = text;
-    callback(null, { id, text });
-  }
+  //define filename with id
+  //writeFile with (filename, text, callback)
+  var filename = this.dataDir + '/' + id + '.txt';
+  fs.access(filename, fs.F_OK, (err)=>{
+    if (err) {
+      callback(err);
+    } else {
+      fs.writeFile(filename, text, 'utf8', (err)=>{
+        if (err) {
+          callback(err, null);
+        } else {
+          callback(null, {id, text});
+        }
+      });
+    }
+  });
 };
 
 exports.delete = (id, callback) => {
-  var item = items[id];
-  delete items[id];
-  if (!item) {
-    // report an error if item not found
-    callback(new Error(`No item with id: ${id}`));
-  } else {
-    callback();
-  }
+  var filename = this.dataDir + '/' + id + '.txt';
+  fs.unlink(filename, (err) => {
+    if (err) {
+      callback(err);
+    } else {
+      callback();
+    }
+  });
 };
+
 
 // Config+Initialization code -- DO NOT MODIFY /////////////////////////////////
 
