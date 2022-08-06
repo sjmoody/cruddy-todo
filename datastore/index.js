@@ -2,6 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const _ = require('underscore');
 const counter = require('./counter');
+const Promise = require('bluebird');
+// const readFileP = Promise.promisify(require('fs').readFile);
+
+
+
 
 var items = {};
 
@@ -27,34 +32,47 @@ exports.create = (text, callback) => {
   });
 };
 
-// readAll
-// ✓ should return an empty array when there are no todos
-// 1) should return an array with all saved todos
-
-// get array from readDir of filenames
-// for each item in fileNameArry
-// convert filename into a id
-// readOne(id, ()=> {readFile and push data into array})
-
-// get array from readDir of filenames
-// ['00001.txt', '00002.txt']
-// for i in array
-// remove .txt from each
-// for each item in fileNameArry
-// read each file, push content of file to array
 
 exports.readAll = (callback) => {
-  var todoArray = [];
-  var fileNameArray = fs.readdir(this.dataDir, (err, data) => {
+  const readFileP = Promise.promisify(fs.readFile);
+  let dataArr = [];
+  let promiseArr = [];
+
+  fs.readdir(this.dataDir, (err, data) => {
     if (err) {
       callback(err, null);
       console.log(err);
     } else {
 
-      // [ '00001.txt', '00002.txt' ]
-      // data
-      // WANT: dataObj = {id: '00001.txt', text: '00001.txt'} {id: id, text: id}
-      // array of filenames
+      for (var i = 0; i < data.length; i++) {
+
+        var filename = this.dataDir + '/' + data[i];
+
+        promiseArr.push(readFileP(filename, 'utf8'));
+      }
+      Promise.all(promiseArr).then((allData)=>{
+        for (var i = 0; i < allData.length; i++ ) {
+          id = data[i].slice(0, 5);
+          dataArr.push({id: id, text: allData[i]});
+        }
+      }).then(() => {
+        callback(null, dataArr);
+      }).catch((err) => {
+        console.log(err);
+      });
+    }
+  });
+
+};
+
+exports.readAllcb = (callback) => {
+  var todoArray = [];
+  fs.readdir(this.dataDir, (err, data) => {
+    if (err) {
+      callback(err, null);
+      console.log(err);
+    } else {
+
       var dataObj = _.map(data, (file)=>{
         id = file.slice(0, 5);
         return {id: id, text: id};
@@ -64,9 +82,6 @@ exports.readAll = (callback) => {
   });
 };
 
-// input: id
-// output cb with the data for one task file
-// edge case: does the file exist? need to check at the same moment as reading file
 
 exports.readOne = (id, callback) => {
   var filename = this.dataDir + '/' + id + '.txt';
@@ -81,8 +96,7 @@ exports.readOne = (id, callback) => {
 
 //fs.writeFile( file, data, options, callback )
 exports.update = (id, text, callback) => {
-  //define filename with id
-  //writeFile with (filename, text, callback)
+
   var filename = this.dataDir + '/' + id + '.txt';
   fs.access(filename, fs.F_OK, (err)=>{
     if (err) {
